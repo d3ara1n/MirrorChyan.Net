@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Misc/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/MirrorChyan.Net/MirrorChyan.Net.csproj" />
+</Solution>
