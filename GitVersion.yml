@@ -1,7 +1,7 @@
 mode: ContinuousDelivery
 branches:
     main:
-        regex: ^main$
+        regex: ^master$
         label: ''
         increment: None
         is-release-branch: true
