@@ -18,7 +18,7 @@ using MirrorChyan.Net.Models;
 using MirrorChyan.Net.Services;
 
 // 注册服务
-services.AddMirrorChyan(productId: "maa", clientName: "MaaWpfGui", currentVersion: "v1.0.0");
+services.AddMirrorChyan(productId: "abb", clientName: "AbbTauriGui", currentVersion: "v1.0.0");
 var provider = services.BuildServiceProvider();
 
 // 使用服务
