@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Net;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,15 +22,35 @@ public static class ServiceCollectionExtensions
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
             options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             services
-               .AddRefitClient<IMirrorChyanClient>(_ => new(new SystemTextJsonContentSerializer(options)))
-               .ConfigureHttpClient((sp, client) =>
+                .AddRefitClient<IMirrorChyanClient>(_ =>
+                {
+                    var settings = new RefitSettings(new SystemTextJsonContentSerializer(options));
+                    settings.ExceptionFactory = async message => message switch
+                    {
+                        { IsSuccessStatusCode: true } => null,
+                        {
+                            StatusCode: HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized
+                            or HttpStatusCode.Forbidden
+                        } => null,
+                        { RequestMessage: not null } => await ApiException
+                            .Create(message.RequestMessage,
+                                message.RequestMessage.Method,
+                                message,
+                                settings)
+                            .ConfigureAwait(false),
+                        _ => new NotImplementedException()
+                    };
+
+                    return settings;
+                })
+                .ConfigureHttpClient((sp, client) =>
                 {
                     var o = sp.GetRequiredService<IOptionsMonitor<MirrorChyanOptions>>();
                     client.BaseAddress = o.CurrentValue.BaseAddress;
                 });
             services
-               .AddSingleton<IMirrorChyanService, MirrorChyanService>()
-               .Configure<MirrorChyanOptions>(o =>
+                .AddSingleton<IMirrorChyanService, MirrorChyanService>()
+                .Configure<MirrorChyanOptions>(o =>
                 {
                     o.ProductId = productId;
                     o.ClientName = clientName;
