@@ -2,8 +2,12 @@ name: Publish NuGet Package
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -41,29 +45,52 @@ jobs:
         with:
           useConfigFile: true
 
-      - name: Install git-cliff
+      - name: Check if version changed
+        id: version-check
         run: |
-          cargo install git-cliff
+          semver="${{ steps.gitversion.outputs.SemVer }}"
+          if git tag -l "v${semver}" | grep -q .; then
+            echo "Version v${semver} already exists, skipping release."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "New version v${semver}, proceeding with release."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create local tag
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: git tag "v${{ steps.gitversion.outputs.SemVer }}"
+
+      - name: Install git-cliff
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: cargo install git-cliff
 
       - name: Pack NuGet package
+        if: steps.version-check.outputs.should_publish == 'true'
         run: |
           dotnet pack src/MirrorChyan.Net/MirrorChyan.Net.csproj \
             --configuration Release \
             --output ./publish
 
       - name: Generate changelog
-        run: git-cliff  --latest -o ./CHANGELOG.md
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: git-cliff --latest -o ./CHANGELOG.md
 
       - name: Publish to NuGet
+        if: steps.version-check.outputs.should_publish == 'true'
         run: |
           dotnet nuget push ./publish/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-        
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
+      - name: Push tag to remote
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: git push origin "v${{ steps.gitversion.outputs.SemVer }}"
+
       - name: Create GitHub Release
+        if: steps.version-check.outputs.should_publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: v${{ steps.gitversion.outputs.SemVer }}
+          name: Release v${{ steps.gitversion.outputs.SemVer }}
           body_path: ./CHANGELOG.md
