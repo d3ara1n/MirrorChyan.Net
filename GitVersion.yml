@@ -6,4 +6,3 @@ branches:
   main:
     label: ''
     increment: None
-    is-release-branch: true
