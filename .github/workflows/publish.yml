@@ -26,7 +26,6 @@ jobs:
         run: |
           dotnet_version=$(grep '<TargetFramework>' src/MirrorChyan.Net/MirrorChyan.Net.csproj | grep -o 'net[0-9]\+\.[0-9]\+' | sed 's/net//')
           echo "dotnet_version=$dotnet_version" >> $GITHUB_OUTPUT
-          echo "dotnet_framework=net${dotnet_version}" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Setup .NET
@@ -57,13 +56,17 @@ jobs:
             echo "should_publish=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create local tag
-        if: steps.version-check.outputs.should_publish == 'true'
-        run: git tag "v${{ steps.gitversion.outputs.SemVer }}"
-
       - name: Install git-cliff
         if: steps.version-check.outputs.should_publish == 'true'
         run: cargo install git-cliff
+
+      - name: Generate release notes
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: |
+          git-cliff \
+            --unreleased \
+            --tag "v${{ steps.gitversion.outputs.SemVer }}" \
+            -o src/MirrorChyan.Net/RELEASE_NOTES.md
 
       - name: Pack NuGet package
         if: steps.version-check.outputs.should_publish == 'true'
@@ -72,25 +75,18 @@ jobs:
             --configuration Release \
             --output ./publish
 
-      - name: Generate changelog
-        if: steps.version-check.outputs.should_publish == 'true'
-        run: git-cliff --latest -o ./CHANGELOG.md
-
       - name: Publish to NuGet
         if: steps.version-check.outputs.should_publish == 'true'
-        run: |
-          dotnet nuget push ./publish/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push ./publish/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
-      - name: Push tag to remote
+      - name: Tag and push
         if: steps.version-check.outputs.should_publish == 'true'
-        run: git push origin "v${{ steps.gitversion.outputs.SemVer }}"
-
-      - name: Create GitHub Release
-        if: steps.version-check.outputs.should_publish == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.gitversion.outputs.SemVer }}
-          name: Release v${{ steps.gitversion.outputs.SemVer }}
-          body_path: ./CHANGELOG.md
+        run: |
+          git tag "v${{ steps.gitversion.outputs.SemVer }}"
+          git push origin "v${{ steps.gitversion.outputs.SemVer }}"

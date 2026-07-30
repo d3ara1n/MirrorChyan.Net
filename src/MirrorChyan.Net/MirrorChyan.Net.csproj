@@ -24,6 +24,7 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>MirrorChyan dotnet SDK</Title>
+        <PackageReleaseNotes Condition="Exists('$(MSBuildProjectDirectory)/RELEASE_NOTES.md')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/RELEASE_NOTES.md'))</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

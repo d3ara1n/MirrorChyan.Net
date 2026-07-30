@@ -372,3 +372,6 @@ appsettings.*.json
 build/
 Releases/
 publish/
+
+# CI-generated release notes (transient, injected into the package during publish)
+RELEASE_NOTES.md
