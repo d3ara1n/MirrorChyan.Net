@@ -22,7 +22,7 @@ public static class ServiceCollectionExtensions
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
             options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             services
-                .AddRefitClient<IMirrorChyanClient>(_ =>
+                .AddRefitGeneratedClient<IMirrorChyanClient>(_ =>
                 {
                     var settings = new RefitSettings(new SystemTextJsonContentSerializer(options));
                     settings.ExceptionFactory = async message => message switch
